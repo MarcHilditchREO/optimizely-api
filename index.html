@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, width=device-width">
+  <title>Optimizely experiment viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://momentjs.com/downloads/moment.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
+  <link type="text/css" rel="stylesheet" property="stylesheet" href="assets/css/index.css">
+</head>
+
+<body>
+  <header>
+    <div>
+      <img src="https://www.esure.com/sites/esure/files/esure_No_R_Blue.png">
+      <!-- <img src="https://images.ctfassets.net/zw48pl1isxmc/4WzcX9VVHOmwyg8ykkSeYq/e06717d6aaf30f01dc5da23408fdb671/optimizely-logo.svg"> -->
+    </div>
+  </header>
+  <div id="app">
+    <template v-if="!authenticated">
+      <p>Please wait, authenticating...</p>
+    </template>
+    <template v-else>
+      <div id="projects">
+        <label for="select-project">Project</label>
+        <div class="select-wrapper" v-if="projects.length > 0">
+          <select id="select-project" @change="getExperimentsForProject" v-model="selectedProject">
+            <option disabled :value="null">Select a project...</option>
+            <option v-for="p in projects" :value="p.id">
+              {{p.name}}
+            </option>
+          </select>
+        </div>
+        <div class="wait-text" v-if="projects.length === 0">Retrieving projects...</div>
+      </div>
+      <div id="experiments" v-if="selectedProject">
+        <label for="select-experiment">Experiment</label>
+        <div class="select-wrapper" v-if="experiments.length > 0">
+          <select id="select-experiment" @change="getExperimentResults" v-model="selectedExperiment">
+            <option disabled :value="null">Select an experiment...</option>
+            <option v-for="e in experiments" :value="e.id" :disabled="!e.status">
+              <template v-if="e.status">
+                {{e.name}} ({{e.status}})
+              </template>
+              <template v-else>
+              </template>
+            </option>
+          </select>
+        </div>
+        <div class="wait-text" v-if="!experimentsRetrieved">Retrieving experiments...</div>
+        <div class="wait-text" v-if="experimentsRetrieved && experiments.length == 0">No experiments found for project</div>
+      </div>
+      <div class="wait-text" v-if="experiments.length > 0 && !experimentResults && selectedExperiment != null ">Retrieving
+        results...</div>
+      <div id="experiment-results" v-if="experimentResults">
+        <h3>Details</h3>
+        <table class="details-table">
+          <tr>
+            <td>Status</td>
+            <td>{{getExperimentStatus(selectedExperiment)}}</td>
+          </tr>
+          <tr>
+            <td>Start time</td>
+            <td>{{experimentResults.start_time | formatDate}}</td>
+          </tr>
+          <tr>
+            <td>End time</td>
+            <td>{{experimentResults.end_time | formatDate}}</td>
+          </tr>
+          <tr>
+            <td>Visitor count</td>
+            <td>{{experimentResults.reach.total_count | formatNumber}}</td>
+          </tr>
+        </table>
+        <h3>Results</h3>
+        <div v-for="m in experimentResults.metrics">
+          <h4>{{m.name}}</h4>
+          <table>
+            <tr>
+              <th>Variation</th>
+              <th>Conversion rate</th>
+              <th>Significance</th>
+            </tr>
+            <tr :class="getWinnerLoserClass(r)" v-for="r in sortVariations(m.results)">
+              <td>
+                <a :href="getPreviewUrl(selectedExperiment,r)" target="_blank" v-if="getPreviewUrl(selectedExperiment,r)">{{r.name}}</a>
+                <template v-else>
+                  {{r.name}}
+                </template>
+              </td>
+              <td :class="getLiftStatusClass(r)">
+                {{getRate(r)}} <span class="lift-status-indicator" v-html="getLiftStatusIndicator(r)"></span>
+                <div class="lift-text" v-if="getLift(r)">({{getLift(r)}})</div>
+              </td>
+              <td>{{getSignificance(r)}}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </template>
+  </div>
+  <script src="assets/js/index.js"></script>
+</body>
+
+</html>
